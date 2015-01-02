@@ -94,23 +94,6 @@ uint16_t BMP085_Read_Reg(uint8_t addr)
 	return ((msb << 8) | lsb);
 }
 
-void BMP085_Read_Calibration_Data(void)
-{
-	i2cInit();
-
-	BMP085CD.ac1 = BMP085_Read_Reg(BMP085_AC1);
-	BMP085CD.ac2 = BMP085_Read_Reg(BMP085_AC2);
-	BMP085CD.ac3 = BMP085_Read_Reg(BMP085_AC3);
-	BMP085CD.ac4 = BMP085_Read_Reg(BMP085_AC4);
-	BMP085CD.ac5 = BMP085_Read_Reg(BMP085_AC5);
-	BMP085CD.ac6 = BMP085_Read_Reg(BMP085_AC6);
-	BMP085CD.b1 = BMP085_Read_Reg(BMP085_B1);
-	BMP085CD.b2 = BMP085_Read_Reg(BMP085_B2);
-	BMP085CD.mb = BMP085_Read_Reg(BMP085_MB);
-	BMP085CD.mc = BMP085_Read_Reg(BMP085_MC);
-	BMP085CD.md = BMP085_Read_Reg(BMP085_MD);
-}
-
 int32_t BMP085_Read_Temp(void)
 {
 	// uint8_t addrBuf[2];
@@ -155,7 +138,7 @@ int32_t BMP085_Read_Pressure(void)
 	i2cSendByte(BMP085_ADDR);	// write register address
 	i2cWaitForComplete();
 	
-	i2cSendByte(BMP085_PRES_OS0);	// write register data for temp
+	i2cSendByte(BMP085_PRES_OS0);	// write register data for pressure
 	i2cWaitForComplete();
 	
 	i2cSendStop();
@@ -165,7 +148,23 @@ int32_t BMP085_Read_Pressure(void)
 	return BMP085_Read_Reg(BMP085_RESULT);
 }
 
-// uto and upo are for debugging.
+void BMP085_Read_Calibration_Data(void)
+{
+	i2cInit();
+
+	BMP085CD.ac1 = BMP085_Read_Reg(BMP085_AC1);
+	BMP085CD.ac2 = BMP085_Read_Reg(BMP085_AC2);
+	BMP085CD.ac3 = BMP085_Read_Reg(BMP085_AC3);
+	BMP085CD.ac4 = BMP085_Read_Reg(BMP085_AC4);
+	BMP085CD.ac5 = BMP085_Read_Reg(BMP085_AC5);
+	BMP085CD.ac6 = BMP085_Read_Reg(BMP085_AC6);
+	BMP085CD.b1 = BMP085_Read_Reg(BMP085_B1);
+	BMP085CD.b2 = BMP085_Read_Reg(BMP085_B2);
+	BMP085CD.mb = BMP085_Read_Reg(BMP085_MB);
+	BMP085CD.mc = BMP085_Read_Reg(BMP085_MC);
+	BMP085CD.md = BMP085_Read_Reg(BMP085_MD);
+}
+
 void BMP085_Convert(int32_t* temp, int32_t* pressure)
 {
 	int32_t ut;
@@ -174,8 +173,6 @@ void BMP085_Convert(int32_t* temp, int32_t* pressure)
 	uint32_t b4, b7;
 
 	ut = BMP085_Read_Temp();
-	ut = BMP085_Read_Temp();
-	up = BMP085_Read_Pressure();
 	up = BMP085_Read_Pressure();
 
 	// Calculate tempurature.
@@ -200,4 +197,16 @@ void BMP085_Convert(int32_t* temp, int32_t* pressure)
 	x1 = (x1 * 3038) >> 16;
 	x2 = (-7357 * p) >> 16;
 	*pressure = p + ((x1 + x2 + 3791) >> 4);
+}
+
+int32_t BMP085_Altitude(int32_t pressure)
+{
+	int32_t altitude;
+	double temp;
+
+	temp = (double)pressure / 101325; // 101325Pa is standard pressure at sea level.
+	temp = 1-pow(temp, 0.19029);
+	altitude = round(44330*temp);
+
+	return altitude;
 }
