@@ -20,6 +20,9 @@
 #define RLEDBIT PD4
 #define RLEDDDR DDRD
 
+#define TIMER3_OFF	TCCR3B &= ~(1<<CS30); DHT22Counter = 0; TCNT3 = 0
+#define TIMER3_ON 	TCCR3B |= (1<<CS30)
+
 volatile uint32_t DHT22Counter = 0;
  
 void SBCtrlInit(void){
@@ -34,7 +37,7 @@ void SBCtrlInit(void){
 	TCCR3B = 	(1<<WGM32)|	// Set up Timer/Counter 3 in CTC mode
 				(1<<CS30);	// Prescaler of 1
 	TCNT3 = 0;
-	OCR3A = 0x00A0;			// Set up general control interrupt for 10us 
+	OCR3A = 0x03C0;			// Set up general control interrupt for 60us 
 	TIMSK3 = (1<<OCIE3A);	// enable timer
 }
 
@@ -44,6 +47,7 @@ ISR(TIMER1_COMPA_vect){
 
 ISR(TIMER3_COMPA_vect){
 	DHT22Counter++;
+	PINC |= (1<<4);
 }
 
 #endif

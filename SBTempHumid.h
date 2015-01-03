@@ -32,15 +32,14 @@
 #define SBTH_STATE_DATA			6
 #define SBTH_STATE_FINALISE		7
 
-#define SBTH_REQ_DELAY			100		// Data request delay is 1000us
-#define SBTH_DATA_LOGIC_VALUE	5		// If state is high for >50us then "1" else "0"
-#define SBTH_NUM_DATA_BITS		4		// 40 bits in a data transfer
+#define SBTH_REQ_DELAY			17		// Data request delay is 1000us
+#define SBTH_NUM_DATA_BITS		39		// 40 bits in a data transfer
 
 volatile static uint8_t oneWireCommState = SBTH_STATE_IDLE;
 volatile static uint8_t oneWireDataBitNum = 0, pinState;
-volatile static uint64_t dataBuffer1, dataBuffer2;
-static int16_t _temperature;
-static uint16_t _humidity;
+volatile static uint64_t dataBuffer;
+static double _temperature;
+static double _humidity;
  
 void SBTempHumidInit(void){
 	SBTH_SDA_DDR &= ~(1<<SBTH_SDA_BIT);	// PE7-INT6 is used as the hardware interrupt pin
@@ -54,33 +53,24 @@ void SBTempHumidInit(void){
 
 void SBTempHumidReqData(){
 	if (oneWireCommState == SBTH_STATE_IDLE){
+		TIMSK3 |= (1<<OCIE3A);	// Enable timer
 		oneWireCommState = SBTH_STATE_REQ_DATA;
-		DDRE |= (1<<PE6);	// req data
-		PORTE |= (1<<PE6);	// req data
+		SBTH_SDA_DDR |= (1<<SBTH_SDA_BIT);	// req data
+		SBTH_SDA_PORT &= ~(1<<SBTH_SDA_BIT);	// req data
 		DHT22Counter = 0;
+		TIMER3_ON;
 	}
 }
 
-int8_t SBTempHumidCaseCheck(void){	
-	unsigned char stateStr[10], countStr[10];
-	itoa(oneWireCommState, stateStr, 10);
-	itoa(DHT22Counter, countStr, 10);
-	
-	RDLCDPosition(0, 2);
-	RDLCDString(stateStr);
-	RDLCDPosition(0, 3);
-	RDLCDString("       ");
-	RDLCDPosition(0, 3);
-	RDLCDString(countStr);
-	
+int8_t SBTempHumidCaseCheck(void){
 	switch (oneWireCommState){
 		case SBTH_STATE_IDLE:
+			TIMER3_OFF;
 			return -2; // Flag IDLE state
 			
 		case SBTH_STATE_REQ_DATA:
 			if (DHT22Counter >= SBTH_REQ_DELAY){
-				dataBuffer2 = dataBuffer1;
-				dataBuffer1 = 0;
+				dataBuffer = 0;
 				oneWireDataBitNum = 0;
 				SBTH_SDA_DDR &= ~(1<<SBTH_SDA_BIT);		// Set SDA as input
 				SBTH_SDA_PORT &= ~(1<<SBTH_SDA_BIT);	// Disable pull-up - handled by external hardware
@@ -105,41 +95,43 @@ int8_t SBTempHumidCaseCheck(void){
 		
 		case SBTH_STATE_FINALISE:{
 			uint8_t parityRx, parity, temperature1, temperature2, humidity1, humidity2;
-			parityRx 		= dataBuffer1&0x00000000FF;
-			temperature1 	= dataBuffer1&0x000000FF00;
-			temperature2 	= dataBuffer1&0x0000FF0000;
-			humidity1 		= dataBuffer1&0x00FF000000;
-			humidity2 		= dataBuffer1&0xFF00000000;
+			parityRx 		= dataBuffer&0x00000000FF;
+			temperature1 	= (dataBuffer&0x000000FF00)>>8;
+			temperature2 	= (dataBuffer&0x0000FF0000)>>16;
+			humidity1 		= (dataBuffer&0x00FF000000)>>24;
+			humidity2 		= (dataBuffer&0xFF00000000)>>32;
 			// Calculate parity. Note that overflows are expected and allowed
 			parity = temperature1 + temperature2 + humidity1 + humidity2; 
 			oneWireCommState = SBTH_STATE_IDLE;
-			if (parity == parityRx){
-				_temperature = (temperature2<<8)|(temperature1);
-				_humidity = (humidity2<<8)|(humidity1);
+			RLEDPIN |= (1<<RLEDBIT);
+			if (/*parity == parityRx*/1){
+				_temperature = (double)((int)((temperature2<<8)|(temperature1)))/10;//dat math
+				_humidity = (double)((int)((humidity2<<8)|(humidity1)))/10;//dat math
 				return 1;
 			} else return -1;
 		}
 	}
 }
 
-void SBTempHumidGetVals(int16_t* temp, uint16_t* humid){
+void SBTempHumidGetVals(double* temp, double* humid){
 	*temp = _temperature;
 	*humid = _humidity;
 }
 
-void SBTempHumidDispLCD(int16_t temp, uint16_t humid){
-	unsigned char tempStr[10], humidStr[10];
-	itoa(temp, tempStr, 10);
-	itoa(humid, humidStr, 10);
+void SBTempHumidDispLCD(void){
+	unsigned char tempStr[5], humidStr[5];
+	
+	sprintf(tempStr, "%0.1f", _temperature);
+	sprintf(humidStr, "%0.1f", _humidity);
 	
 	RDLCDPosition(0, 0);					
 	RDLCDString((unsigned char*) "Temp:     ");
-	RDLCDPosition(35, 0);
+	RDLCDPosition(42, 0);
 	RDLCDString(tempStr);
 	RDLCDString((unsigned char*) "C");
 	RDLCDPosition(0, 1);					
 	RDLCDString((unsigned char*) "Humid:     ");
-	RDLCDPosition(35, 1);
+	RDLCDPosition(42, 1);
 	RDLCDString(humidStr);
 	RDLCDString((unsigned char*) "%");
 }
@@ -178,24 +170,26 @@ ISR(INT6_vect){
 		case SBTH_STATE_DATA_LOW:	// Wait for data transmission
 			pinState = (SBTH_SDA_PIN>>SBTH_SDA_BIT)&1;	// Read SDA
 			if (pinState){
-				oneWireCommState = SBTH_STATE_DATA;
+				TIMER3_ON;
 				DHT22Counter = 0;
+				oneWireCommState = SBTH_STATE_DATA;
 			}
 			break;
 		
 		case SBTH_STATE_DATA:	// Dictate whether "0" or "1" received 
 			pinState = (SBTH_SDA_PIN>>SBTH_SDA_BIT)&1;		// Read SDA
 			if (!pinState){
-				if (DHT22Counter >= SBTH_DATA_LOGIC_VALUE){	// Analyse received data
-					dataBuffer1 = (dataBuffer1<<1)|1;		// Shift "1" in
+				if (DHT22Counter){	// Analyse received data
+					dataBuffer = (dataBuffer<<1)|1;		// Shift "1" in
 				} else{
-					dataBuffer1 = (dataBuffer1<<1);			// Shift "0" in
+					dataBuffer = (dataBuffer<<1);			// Shift "0" in
 				}
 				oneWireDataBitNum++;						// Increment bit number
 				if (oneWireDataBitNum > SBTH_NUM_DATA_BITS)	// If whole message received
 					oneWireCommState = SBTH_STATE_FINALISE;	// Finalise message
 				else 
 					oneWireCommState = SBTH_STATE_DATA_LOW;	// Read in more data
+				TIMER3_OFF;
 			}
 			break;
 		

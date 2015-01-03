@@ -80,15 +80,15 @@ void ABAccelToLCD(void){
 	itoa(z, zStr, 10);
 	
 	RDLCDPosition(0,0);
-	RDLCDString("X:         ");
+	RDLCDString((unsigned char*) "X:         ");
 	RDLCDPosition(15,0);
-	RDLCDString(xStr);
+	RDLCDString((unsigned char*) xStr);
 	RDLCDPosition(0,1);
-	RDLCDString("Y:         ");
+	RDLCDString((unsigned char*) "Y:         ");
 	RDLCDPosition(15,1);
-	RDLCDString(yStr);
+	RDLCDString((unsigned char*) yStr);
 	RDLCDPosition(0,2);
-	RDLCDString("Z:         ");
+	RDLCDString((unsigned char*) "Z:         ");
 	RDLCDPosition(15,2);
-	RDLCDString(zStr);
+	RDLCDString((unsigned char*) zStr);
 }
