@@ -10,6 +10,7 @@
  */ 
 
  #include "RDAnalog.h"
+ #include "SBCtrl.h"
  
 /*macro definitions of Analog read pins*/
 #define X_AXIS_PIN 1
@@ -27,27 +28,20 @@
 #define ZCAL 3.769
 
 static float scale;
+static int xIntCal = 0, yIntCal = 0, zIntCal = 0;
 
-void SBAccelPinsInit(void)
-{
+void SBAccelPinsInit(void){
     DDRF &= ~(1<<X_AXIS_PIN)&~(1<<Y_AXIS_PIN)&~(1<<Z_AXIS_PIN);
 	scale = (float)SENSITIVITY*ADC_AMPLITUDE/ADC_REF;
 }
 
-void SBAccelCal(void) // Complete me!!!
-{
-
-}
-
-void SBAccelGetXYZ(int16_t *x,int16_t *y,int16_t *z)
-{
+void SBAccelGetXYZ(int16_t *x,int16_t *y,int16_t *z){
     *x = RDAnalogReadAvg(X_AXIS_PIN, MODE_10_BIT, 5);
     *y = RDAnalogReadAvg(Y_AXIS_PIN, MODE_10_BIT, 5);
     *z = RDAnalogReadAvg(Z_AXIS_PIN, MODE_10_BIT, 5);
 }
 
-void SBAccelGetAccelerationFl(float *ax,float *ay,float *az)
-{
+void SBAccelGetAccelerationFl(float *ax,float *ay,float *az){
     int16_t x,y,z;
     float xvoltage,yvoltage,zvoltage;
     SBAccelGetXYZ(&x,&y,&z);
@@ -66,12 +60,31 @@ void SBAccelGetAccelerationFl(float *ax,float *ay,float *az)
 void SBAccelGetAccelerationInt(int *ax, int *ay, int *az){
 	float x, y, z;
 	SBAccelGetAccelerationFl(&x, &y, &z);
-	*ax = (int) (x*1000);
-	*ay = (int) (y*1000);
-	*az = (int) (z*1000);
+	*ax = (int) (x*1000) + xIntCal;
+	*ay = (int) (y*1000) + yIntCal;
+	*az = (int) (z*1000) + zIntCal;
 }
 
-void ABAccelToLCD(void){
+void SBAccelCal(void){ 
+	if (DEBUG_MODE){
+		RDLCDClear();
+		RDLCDPosition(15, 1);
+		RDLCDString("WARNING:");
+		RDLCDPosition(5, 3);
+		RDLCDString("Calibrating");
+		RDLCDPosition(0, 4);
+		RDLCDString("Accelerometer");
+		_delay_ms(1000);
+	}
+	int x, y, z;
+	SBAccelGetAccelerationInt(&x, &y, &z);
+	xIntCal = -(x)+78;
+	yIntCal = -(y);
+	zIntCal = -(z);
+	if(DEBUG_MODE) RDLCDClear();
+}
+
+void SBAccelToLCD(void){
 	int x, y, z;
 	char xStr[10], yStr[10], zStr[10];
 	SBAccelGetAccelerationInt(&x, &y, &z);
@@ -79,16 +92,16 @@ void ABAccelToLCD(void){
 	itoa(y, yStr, 10);
 	itoa(z, zStr, 10);
 	
-	RDLCDPosition(0,0);
+	RDLCDPosition(0,3);
 	RDLCDString((unsigned char*) "X:         ");
-	RDLCDPosition(15,0);
+	RDLCDPosition(15,3);
 	RDLCDString((unsigned char*) xStr);
-	RDLCDPosition(0,1);
+	RDLCDPosition(0,4);
 	RDLCDString((unsigned char*) "Y:         ");
-	RDLCDPosition(15,1);
+	RDLCDPosition(15,4);
 	RDLCDString((unsigned char*) yStr);
-	RDLCDPosition(0,2);
+	RDLCDPosition(0,5);
 	RDLCDString((unsigned char*) "Z:         ");
-	RDLCDPosition(15,2);
+	RDLCDPosition(15,5);
 	RDLCDString((unsigned char*) zStr);
 }

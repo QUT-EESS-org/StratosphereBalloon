@@ -111,6 +111,7 @@ int8_t SBTempHumidCaseCheck(void){
 			} else return -1;
 		}
 	}
+	return 0;
 }
 
 void SBTempHumidGetVals(double* temp, double* humid){
