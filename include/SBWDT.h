@@ -9,6 +9,7 @@
 
 #include <avr/WDT.h>
 #include "SBEEPROM.h"
+#include "SBCtrl.h"
  
  #define WDT16ms 
  #define WDT32ms 	(1<<WDP0)
@@ -47,11 +48,11 @@ ISR(WDT_vect){
 	for (uint8_t i=0;i<4;i++)
     {
         //LED ON
-        PORTC|=(1<<PC2);
+        RLEDPORT|=(1<<RLEDBIT);
         //~0.1s delay
         _delay_ms(20);
         //LED OFF
-        PORTC&=~(1<<PC2);
+        RLEDPORT&=~(1<<RLEDBIT);
         _delay_ms(80);
     }
 	SBEEPROMWriteWDTCrashFlag(1);

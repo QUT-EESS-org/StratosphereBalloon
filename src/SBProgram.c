@@ -6,7 +6,6 @@
 // Bolt specific includes
 #include "RDAnalog.h"
 #include "RDBluetooth.h"
-#include "RDMotor.h"
 #include "RDLCD.h"
 #include "RDASCIIFont.h"
 #include "RDConstants.h"
@@ -14,6 +13,7 @@
 #include "RDSPI.h"
 #include "RDUART.h"
 #include "RDUtil.h" 
+#include "RDI2C.h"
 #include "SBAccel.h"
 #include "SBPressure.h"
 #include "SBWDT.h"
@@ -37,6 +37,7 @@ typedef struct{
 	int accelX;				// See SBAccel
 	int accelY;				// See SBAccel
 	int accelZ;				// See SBAccel
+	long pressure;			// See SBPressure
 } SBDataStruct;
 
 static SBDataStruct SBData;
@@ -53,9 +54,8 @@ int main (void)
 	/* Initialise */
 	init("Stratosphere Balloon");
 	SBAccelCal();
-	_delay_ms(2000);
 	// Check for previous WDT crash
-	if(SBEEPROMReadWDTCrashFlag()){
+	if(SBEEPROMReadWDTCrashFlag()&&!DEBUG_MODE){
 		SDWriteLocPoint = SBEEPROMReadSDPoint();
 		SBEEPROMWriteWDTCrashFlag(0);
 	}
@@ -74,6 +74,7 @@ int main (void)
 		if (DEBUG_MODE){ // Force WDT reset
 			buttonVal = (PINB>>PB4)&1;
 			while(!buttonVal) buttonVal = (PINB>>PB4)&1;
+			
 		}
 		
 		if (sensorReadFlag){
@@ -93,6 +94,7 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_IDLE;
 			
 		case SENSOR_STATE_BEGIN:		// Begin state
+			if (DEBUG_MODE) RDLCDClear();
 			return SENSOR_STATE_ACCEL;
 		
 		case SENSOR_STATE_ACCEL:		// Get accelerometer data
@@ -104,6 +106,7 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_PRESSURE;
 			
 		case SENSOR_STATE_PRESSURE:		// Get pressure and altitude data
+			if (DEBUG_MODE) SBPressureToLCD();////////////////////////////////////////
 			return SENSOR_STATE_TEMPHUMID1;
 			
 		case SENSOR_STATE_TEMPHUMID1:	// Initialise DHT22 data read
@@ -158,6 +161,14 @@ void init(char* BTName){
 	
 	// Initialise control timers
 	SBCtrlInit();
+	
+	// Initialise I2C
+	//RDI2CInit(0);
+	//#define RDI2C_DYNAMIC 1
+	
+	// Initialise Pressure sensor
+	_delay_ms(100);
+	SBPressureInit();
 	
 	// Initialise Temperature and Humidity sensor
 	SBTempHumidInit();

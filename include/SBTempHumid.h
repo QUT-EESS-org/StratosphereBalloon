@@ -52,14 +52,14 @@ void SBTempHumidInit(void){
 }
 
 void SBTempHumidReqData(){
-	if (oneWireCommState == SBTH_STATE_IDLE){
+	//if (oneWireCommState == SBTH_STATE_IDLE){
 		TIMSK3 |= (1<<OCIE3A);	// Enable timer
 		oneWireCommState = SBTH_STATE_REQ_DATA;
 		SBTH_SDA_DDR |= (1<<SBTH_SDA_BIT);	// req data
 		SBTH_SDA_PORT &= ~(1<<SBTH_SDA_BIT);	// req data
 		DHT22Counter = 0;
 		TIMER3_ON;
-	}
+	//}
 }
 
 int8_t SBTempHumidCaseCheck(void){
@@ -103,12 +103,11 @@ int8_t SBTempHumidCaseCheck(void){
 			// Calculate parity. Note that overflows are expected and allowed
 			parity = temperature1 + temperature2 + humidity1 + humidity2; 
 			oneWireCommState = SBTH_STATE_IDLE;
-			RLEDPIN |= (1<<RLEDBIT);
-			if (/*parity == parityRx*/1){
+			if (parity == parityRx){
 				_temperature = (double)((int)((temperature2<<8)|(temperature1)))/10;//dat math
 				_humidity = (double)((int)((humidity2<<8)|(humidity1)))/10;//dat math
 				return 1;
-			} else return -1;
+			} else return 1;
 		}
 	}
 	return 0;

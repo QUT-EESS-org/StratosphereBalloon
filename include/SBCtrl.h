@@ -22,13 +22,15 @@
 
 #define DEBUG_MODE 1
 #define BT_ENABLE_MODE 0
+#define ASCII_SMALL_FONT 1
+#define ASCII_LARGE_FONT 0
 
 // Inline defines
 #define TIMER3_OFF	TCCR3B &= ~(1<<CS30); DHT22Counter = 0; TCNT3 = 0
 #define TIMER3_ON 	TCCR3B |= (1<<CS30)
 
 volatile uint32_t DHT22Counter = 0;
-volatile uint8_t sensorReadFlag = 0;
+volatile uint8_t sensorReadFlag = 0, flagCount = 0;
  
 void SBCtrlInit(void){
 	TCCR1A = 0;
@@ -47,8 +49,11 @@ void SBCtrlInit(void){
 }
 
 ISR(TIMER1_COMPA_vect){
-	sensorReadFlag = 1;
-	RLEDPIN |= (1<<RLEDBIT);
+	flagCount++;
+	if (flagCount == 2){
+		sensorReadFlag = 1;
+		flagCount = 0;
+	}
 }
 
 ISR(TIMER3_COMPA_vect){

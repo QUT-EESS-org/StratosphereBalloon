@@ -74,7 +74,7 @@ void SBAccelCal(void){
 		RDLCDString("Calibrating");
 		RDLCDPosition(0, 4);
 		RDLCDString("Accelerometer");
-		_delay_ms(1000);
+		_delay_ms(500);
 	}
 	int x, y, z;
 	SBAccelGetAccelerationInt(&x, &y, &z);
@@ -92,13 +92,13 @@ void SBAccelToLCD(void){
 	itoa(y, yStr, 10);
 	itoa(z, zStr, 10);
 	
-	RDLCDPosition(0,3);
-	RDLCDString((unsigned char*) "X:         ");
-	RDLCDPosition(15,3);
-	RDLCDString((unsigned char*) xStr);
 	RDLCDPosition(0,4);
-	RDLCDString((unsigned char*) "Y:         ");
+	RDLCDString((unsigned char*) "X:         ");
 	RDLCDPosition(15,4);
+	RDLCDString((unsigned char*) xStr);
+	RDLCDPosition(40,4);
+	RDLCDString((unsigned char*) "Y:         ");
+	RDLCDPosition(55,4);
 	RDLCDString((unsigned char*) yStr);
 	RDLCDPosition(0,5);
 	RDLCDString((unsigned char*) "Z:         ");
