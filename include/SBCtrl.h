@@ -31,6 +31,25 @@
 
 volatile uint32_t DHT22Counter = 0;
 volatile uint8_t sensorReadFlag = 0, flagCount = 0;
+
+// Sensor data struct
+typedef struct{
+	double temperature;		// See SBTempHumid
+	double humidity;		// See SBTempHumid
+	int accelX;				// See SBAccel
+	int accelY;				// See SBAccel
+	int accelZ;				// See SBAccel
+	long pressure;			// See SBPressure
+	uint16_t cpm;			// See SBGeiger
+	double location[3];		// See SBGPS
+	uint8_t timeH;			// See SBGPS
+	uint16_t timeL;			// See SBGPS
+	uint32_t crashCount;	// See SBEEPROM
+	uint32_t numSamples;	// See SBEEPROM
+	uint32_t SDLoc;			// See SBEEPROM
+} SBDataStruct;
+
+volatile SBDataStruct SBData;
  
 void SBCtrlInit(void){
 	TCCR1A = 0;

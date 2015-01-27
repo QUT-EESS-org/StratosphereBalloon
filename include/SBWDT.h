@@ -45,16 +45,21 @@ void SBWDTDis(void){
 }
 
 ISR(WDT_vect){
-	for (uint8_t i=0;i<4;i++)
-    {
-        //LED ON
-        RLEDPORT|=(1<<RLEDBIT);
-        //~0.1s delay
-        _delay_ms(20);
-        //LED OFF
-        RLEDPORT&=~(1<<RLEDBIT);
-        _delay_ms(80);
-    }
-	SBEEPROMWriteWDTCrashFlag(1);
-	SBEEPROMWriteSDPoint(SDWriteLocPoint);
+	if(DEBUG_MODE){
+		for (uint8_t i=0;i<4;i++)
+		{
+			//LED ON
+			RLEDPORT|=(1<<RLEDBIT);
+			//~0.1s delay
+			_delay_ms(20);
+			//LED OFF
+			RLEDPORT&=~(1<<RLEDBIT);
+			_delay_ms(80);
+		}
+	} else{
+		SBEEPROMUpdateCrashCounter();
+		SBEEPROMWriteWDTCrashFlag(1);
+		SBEEPROMWriteNumSamples(SBData.numSamples);
+		SBEEPROMWriteSDPoint(++SBData.SDLoc); 
+	}
 }

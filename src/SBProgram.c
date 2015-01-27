@@ -14,11 +14,14 @@
 #include "RDUART.h"
 #include "RDUtil.h" 
 #include "RDI2C.h"
+#include "RDSD.h"
 #include "SBAccel.h"
 #include "SBPressure.h"
 #include "SBWDT.h"
 #include "SBEEPROM.h"
 #include "SBTempHumid.h"
+#include "SBGeiger.h"
+#include "SBGPS.h"
 
 // FSM defines
 #define SENSOR_STATE_IDLE		0
@@ -29,22 +32,12 @@
 #define SENSOR_STATE_GPS		3
 #define SENSOR_STATE_PRESSURE	4
 #define SENSOR_STATE_MEMORY		5
-
-// Sensor data struct
-typedef struct{
-	double temperature;		// See SBTempHumid
-	double humidity;		// See SBTempHumid
-	int accelX;				// See SBAccel
-	int accelY;				// See SBAccel
-	int accelZ;				// See SBAccel
-	long pressure;			// See SBPressure
-} SBDataStruct;
-
-static SBDataStruct SBData;
+#define SENSOR_STATE_GEIGER		8
 
 // Function declarations
 void init(char* BTName);
 uint8_t sensorFSM(uint8_t state);
+void storeData(void);
 
 // Main program
 int main (void) 
@@ -56,7 +49,9 @@ int main (void)
 	SBAccelCal();
 	// Check for previous WDT crash
 	if(SBEEPROMReadWDTCrashFlag()&&!DEBUG_MODE){
-		SDWriteLocPoint = SBEEPROMReadSDPoint();
+		SBData.SDLoc = SBEEPROMReadSDPoint();
+		SBData.numSamples = SBEEPROMReadNumSamples();
+		SBData.crashCount = SBEEPROMReadCrashCount();
 		SBEEPROMWriteWDTCrashFlag(0);
 	}
 
@@ -80,6 +75,7 @@ int main (void)
 		if (sensorReadFlag){
 			sensorReadState = SENSOR_STATE_BEGIN;
 			sensorReadFlag = 0;	
+			YLEDPIN |= (YLEDBIT<<1);
 		}else sensorReadState = sensorFSM(sensorReadState);
 		
 		SBWDTDis();	// Toc
@@ -88,6 +84,8 @@ int main (void)
 
 uint8_t sensorFSM(uint8_t state){
 	uint8_t tempHumidCheckVal = 0;
+	int tmpX, tmpY, tmpZ;
+	double tmpTemp, tmpHumid;
 	
 	switch (state){
 		case SENSOR_STATE_IDLE:			// Idle state
@@ -99,14 +97,22 @@ uint8_t sensorFSM(uint8_t state){
 		
 		case SENSOR_STATE_ACCEL:		// Get accelerometer data
 			if (DEBUG_MODE) SBAccelToLCD();
-			SBAccelGetAccelerationInt(&SBData.accelX, &SBData.accelY, &SBData.accelY);
+			SBAccelGetAccelerationInt(&tmpX, &tmpY, &tmpZ);
+			SBData.accelX = tmpX;
+			SBData.accelY = tmpY;
+			SBData.accelZ = tmpZ;
 			return SENSOR_STATE_GPS;
 			
 		case SENSOR_STATE_GPS:			// Get GPS data
+			GPSGetLocation((double*) SBData.location, (uint8_t*) &SBData.timeH, (uint16_t*) &SBData.timeL);
 			return SENSOR_STATE_PRESSURE;
 			
 		case SENSOR_STATE_PRESSURE:		// Get pressure and altitude data
-			if (DEBUG_MODE) SBPressureToLCD();////////////////////////////////////////
+			return SENSOR_STATE_GEIGER;
+			
+		case SENSOR_STATE_GEIGER:		// Get Geiger Counter data
+			if (DEBUG_MODE) SBGeigerToLCD();
+			SBData.cpm = SBGeigerRead();
 			return SENSOR_STATE_TEMPHUMID1;
 			
 		case SENSOR_STATE_TEMPHUMID1:	// Initialise DHT22 data read
@@ -116,15 +122,67 @@ uint8_t sensorFSM(uint8_t state){
 		case SENSOR_STATE_TEMPHUMID2:	// Read 1-wire communication with DHT22
 			tempHumidCheckVal = SBTempHumidCaseCheck();
 			if (tempHumidCheckVal == 1){
-				SBTempHumidGetVals(&SBData.temperature, &SBData.humidity);
+				SBTempHumidGetVals(&tmpTemp, &tmpHumid);
+				SBData.temperature = tmpTemp;
+				SBData.humidity = tmpHumid;
 				if (DEBUG_MODE)	SBTempHumidDispLCD();
 				return SENSOR_STATE_MEMORY;		// Data transfer complete - read next sensor
 			} else return SENSOR_STATE_TEMPHUMID2;	// Keep checking TempHumid
 			
 		case SENSOR_STATE_MEMORY:		// Write data to SD card and location pointer to EEPROM
+			storeData();
 			return SENSOR_STATE_IDLE;
 	}
 	return 0;
+}
+
+
+#define SD_BLOCK_SIZE 512
+#define PACKET_SIZE_BYTES 58
+#define SAMPLE_WRITE_MIN (SD_BLOCK_SIZE - PACKET_SIZE_BYTES)
+static uint8_t SDBuffer[512];
+static uint16_t bufLen = 0;
+// Data packet should be 58 bytes, inclusive -> DOUBLE CHECK!!
+void storeData(void){
+	memcpy(&SDBuffer[bufLen], (uint32_t*)&SBData.numSamples, sizeof(SBData.numSamples));
+	bufLen += sizeof(SBData.numSamples);
+	memcpy(&SDBuffer[bufLen], (uint32_t*)&SBData.crashCount, sizeof(SBData.crashCount));
+	bufLen += sizeof(SBData.crashCount);
+	memcpy(&SDBuffer[bufLen], (double*)&SBData.temperature, sizeof(SBData.temperature));
+	bufLen += sizeof(SBData.temperature);
+	memcpy(&SDBuffer[bufLen], (double*)&SBData.humidity, sizeof(SBData.humidity));
+	bufLen += sizeof(SBData.humidity);
+	memcpy(&SDBuffer[bufLen], (int*)&SBData.accelX, sizeof(SBData.accelX));
+	bufLen += sizeof(SBData.accelX);
+	memcpy(&SDBuffer[bufLen], (int*)&SBData.accelY, sizeof(SBData.accelY));
+	bufLen += sizeof(SBData.accelY);
+	memcpy(&SDBuffer[bufLen], (int*)&SBData.accelZ, sizeof(SBData.accelZ));
+	bufLen += sizeof(SBData.accelZ);
+	memcpy(&SDBuffer[bufLen], (long*)&SBData.pressure, sizeof(SBData.pressure));
+	bufLen += sizeof(SBData.pressure);
+	memcpy(&SDBuffer[bufLen], (uint16_t*)&SBData.cpm, sizeof(SBData.cpm));
+	bufLen += sizeof(SBData.cpm);
+	memcpy(&SDBuffer[bufLen], (double*)&SBData.location[0], sizeof(SBData.location[0]));
+	bufLen += sizeof(SBData.location[0]);
+	memcpy(&SDBuffer[bufLen], (double*)&SBData.location[1], sizeof(SBData.location[1]));
+	bufLen += sizeof(SBData.location[1]);
+	memcpy(&SDBuffer[bufLen], (double*)&SBData.location[2], sizeof(SBData.location[2]));
+	bufLen += sizeof(SBData.location[2]);
+	memcpy(&SDBuffer[bufLen], (uint8_t*)&SBData.timeH, sizeof(SBData.timeH));
+	bufLen += sizeof(SBData.timeH);
+	memcpy(&SDBuffer[bufLen], (uint16_t*)&SBData.timeL, sizeof(SBData.timeL));
+	bufLen += sizeof(SBData.timeL);
+	
+	SDBuffer[bufLen] = '\n';
+	bufLen++;
+	SBData.numSamples++;
+	
+	if (bufLen >= SAMPLE_WRITE_MIN){
+		RDSDWriteBuffer(SBData.SDLoc, SDBuffer);
+		
+		bufLen = 0;
+		SBData.SDLoc++;
+	}
 }
 
 void init(char* BTName){
@@ -170,8 +228,17 @@ void init(char* BTName){
 	_delay_ms(100);
 	SBPressureInit();
 	
+	// Initialise Geiger Counter
+	SBGeigerInit();
+	
 	// Initialise Temperature and Humidity sensor
 	SBTempHumidInit();
+	
+	// Initialise SD Card
+	RDSDInit();
+	
+	// Initialise GPS
+	GPSInit();
 	
 	// Manual WDT force reset pins
 	if (DEBUG_MODE){

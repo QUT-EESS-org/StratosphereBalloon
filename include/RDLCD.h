@@ -160,6 +160,24 @@
  */
 #define RDLCD_HIGH_CONTRAST 0x4F
 
+/************************
+ * Single Line Commands *
+ ************************/
+ 
+/**
+ * Select LCD as SPI slave
+ */
+ 
+ #define LCD_SELECT() RDLCD_PORT &= ~(1<<RDLCD_CS)
+ 
+ /**
+ * Release LCD as SPI slave
+ */
+ 
+ #define LCD_RELEASE() RDLCD_PORT |= (1<<RDLCD_CS)
+ 
+ 
+
 /******************
  * LCD Functions. *
  ******************/
@@ -178,7 +196,9 @@ void RDLCDWrite(uint8_t byte, uint8_t dc) {
 	// Set data/command mode
 	RDLCD_PORT = (RDLCD_PORT & ~(1 << RDLCD_DC)) | (dc << RDLCD_DC);
 	// Write byte to SPI
-	RDSPIRWByte(byte, 5, &RDLCD_PORT, RDLCD_CS);
+	LCD_SELECT();
+	RDSPIRWByte(byte, 5);
+	LCD_RELEASE();
 }
 
 /**
