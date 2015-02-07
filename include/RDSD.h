@@ -20,7 +20,7 @@
 // Hardware Interfaces
 #define RDSD_CS_DDR     DDRC
 #define RDSD_CS_PORT    PORTC
-#define RDSD_CS_PIN     PC0
+#define RDSD_CS_PIN     PC7
 
 #define RDSD_SELECT()   RDSD_CS_PORT &= ~(1 << RDSD_CS_PIN)
 #define RDSD_RELEASE()  RDSD_CS_PORT |= (1 << RDSD_CS_PIN)

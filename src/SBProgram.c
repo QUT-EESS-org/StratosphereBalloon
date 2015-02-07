@@ -65,6 +65,7 @@ int main (void)
 	
 	SBWDTDis(); // Toc
 	
+		char tmp[10];
 	while (1) {
 		SBWDTEn();	// Tic
 		
@@ -72,6 +73,11 @@ int main (void)
 			buttonVal = (PINB>>PB4)&1;
 			while(!buttonVal) buttonVal = (PINB>>PB4)&1;
 		}
+		
+		
+		itoa(SBData.SDLoc, tmp, 10);
+		RDLCDPosition(0, 3);
+		RDLCDString(tmp);
 		
 		if (sensorReadFlag){
 			sensorReadState = SENSOR_STATE_BEGIN;
@@ -127,13 +133,12 @@ uint8_t sensorFSM(uint8_t state){
 				SBTempHumidGetVals(&tmpTemp, &tmpHumid);
 				SBData.temperature = tmpTemp;
 				SBData.humidity = tmpHumid;
-				YLEDPORT |= (1<<YLEDBIT);
 				if (DEBUG_MODE)	SBTempHumidDispLCD();
 				return SENSOR_STATE_MEMORY;		// Data transfer complete - read next sensor
 			} else return SENSOR_STATE_TEMPHUMID2;	// Keep checking TempHumid
 			
 		case SENSOR_STATE_MEMORY:		// Write data to SD card and location pointer to EEPROM
-			//storeData();
+			storeData();
 			return SENSOR_STATE_IDLE;
 	}
 	return 0;
@@ -141,11 +146,10 @@ uint8_t sensorFSM(uint8_t state){
 
 
 #define SD_BLOCK_SIZE 512
-#define PACKET_SIZE_BYTES 58
-#define SAMPLE_WRITE_MIN (SD_BLOCK_SIZE - PACKET_SIZE_BYTES)
+#define PACKET_SIZE_BYTES 36
+#define SAMPLE_WRITE_MIN (SD_BLOCK_SIZE - PACKET_SIZE_BYTES - 10)
 static uint8_t SDBuffer[512];
 static uint16_t bufLen = 0;
-// Data packet should be 58 bytes, inclusive -> DOUBLE CHECK!!
 void storeData(void){
 	memcpy(&SDBuffer[bufLen], (int16_t*)&SBData.numSamples, sizeof(SBData.numSamples));
 	bufLen += sizeof(SBData.numSamples);
@@ -181,10 +185,16 @@ void storeData(void){
 	SBData.numSamples++;
 	
 	if (bufLen >= SAMPLE_WRITE_MIN){
-		RDSDWriteBuffer(SBData.SDLoc, SDBuffer);
-		
+		SDBuffer[0] = 0x5E;
+		RDSDWriteBuffer(0/*SBData.SDLoc*/, SDBuffer);
 		bufLen = 0;
+		YLEDPIN |= (1<<YLEDBIT);
 		SBData.SDLoc++;
+		
+		RDLCDClear();
+		RDLCDPosition(0, 0);
+		for (int i = 0; i < 40; i++) RDLCDCharacter((unsigned char) SDBuffer[i]);
+		while(1);
 	}
 }
 
@@ -236,7 +246,7 @@ void init(char* BTName){
 	SBTempHumidInit();
 	
 	// Initialise SD Card
-	RDSDInit();
+	while(RDSDInit() != 0);
 	
 	// Initialise GPS
 	//GPSInit();

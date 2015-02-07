@@ -13,9 +13,9 @@
 #include <avr/eeprom.h>
 
 #define WDT_CRASH_FLAG_LOC 0 	// Flag to see if WDT has been set
-#define SD_POINTER_LOC 1		// Latest SD Card write location
-#define CRASH_COUNTER_LOC 5		// Number of WDT crashes
-#define NUM_SAMPLES_LOC 9		// Number of samples taken
+#define SD_POINTER_LOC 5		// Latest SD Card write location
+#define CRASH_COUNTER_LOC 10		// Number of WDT crashes
+#define NUM_SAMPLES_LOC 20		// Number of samples taken
 
 void SBEEPROMWriteSDPoint(uint32_t val){
 	eeprom_write_dword((uint32_t*) SD_POINTER_LOC, val);
@@ -42,12 +42,16 @@ void SBEEPROMUpdateCrashCounter(void){
 	eeprom_write_word((uint16_t*) CRASH_COUNTER_LOC, ++prevVal);
 }
 
+void SBEEPROMResetCrashCounter(uint16_t val){
+	eeprom_write_word((uint16_t*) CRASH_COUNTER_LOC, val);
+}
+
 void SBEEPROMWriteNumSamples(int16_t val){
 	eeprom_write_word((uint16_t*) NUM_SAMPLES_LOC, val);
 }
 
 int16_t SBEEPROMReadNumSamples(void){
-	eeprom_read_word((uint16_t*) NUM_SAMPLES_LOC);
+	return eeprom_read_word((uint16_t*) NUM_SAMPLES_LOC);
 }
 
 #endif
