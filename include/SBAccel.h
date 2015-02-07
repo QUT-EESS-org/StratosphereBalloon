@@ -13,19 +13,19 @@
  #include "SBCtrl.h"
  
 /*macro definitions of Analog read pins*/
-#define X_AXIS_PIN 1
-#define Y_AXIS_PIN 2
-#define Z_AXIS_PIN 3
+#define X_AXIS_PIN 7
+#define Y_AXIS_PIN 6
+#define Z_AXIS_PIN 5
 
 #define ADC_AMPLITUDE 1024	//amplitude of the 10bit-ADC of Bolt is 1024LSB
-#define ADC_REF 3.3   		//ADC reference is 5v
+#define ADC_REF 5   		//ADC reference is 5v
 #define ZERO_X  1.22 		//acceleration of X-AXIS is 0g, the voltage of X-AXIS is 1.22v
 #define ZERO_Y  1.22 		//
-#define ZERO_Z  1.25 		//
+#define ZERO_Z  1.22 		//
 #define SENSITIVITY 0.25	//sensitivity of X/Y/Z axis is 0.25v/g
 #define XCAL 3.649
 #define YCAL 3.649
-#define ZCAL 3.769
+#define ZCAL 3.649
 
 static float scale;
 static int xIntCal = 0, yIntCal = 0, zIntCal = 0;
@@ -88,6 +88,7 @@ void SBAccelToLCD(void){
 	int x, y, z;
 	char xStr[10], yStr[10], zStr[10];
 	SBAccelGetAccelerationInt(&x, &y, &z);
+	
 	itoa(x, xStr, 10);
 	itoa(y, yStr, 10);
 	itoa(z, zStr, 10);

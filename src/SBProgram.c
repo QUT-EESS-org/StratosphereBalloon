@@ -46,15 +46,17 @@ int main (void)
 	
 	/* Initialise */
 	init("Stratosphere Balloon");
-	SBAccelCal();
+	
 	// Check for previous WDT crash
 	if(SBEEPROMReadWDTCrashFlag()&&!DEBUG_MODE){
 		SBData.SDLoc = SBEEPROMReadSDPoint();
 		SBData.numSamples = SBEEPROMReadNumSamples();
 		SBData.crashCount = SBEEPROMReadCrashCount();
 		SBEEPROMWriteWDTCrashFlag(0);
-	}
-
+	} 
+	
+	SBAccelCal();
+	
 	// Declare variables
 	int8_t buttonVal, sensorReadState = SENSOR_STATE_IDLE;
 	
@@ -69,13 +71,11 @@ int main (void)
 		if (DEBUG_MODE){ // Force WDT reset
 			buttonVal = (PINB>>PB4)&1;
 			while(!buttonVal) buttonVal = (PINB>>PB4)&1;
-			
 		}
 		
 		if (sensorReadFlag){
 			sensorReadState = SENSOR_STATE_BEGIN;
 			sensorReadFlag = 0;	
-			YLEDPIN |= (YLEDBIT<<1);
 		}else sensorReadState = sensorFSM(sensorReadState);
 		
 		SBWDTDis();	// Toc
@@ -85,7 +85,8 @@ int main (void)
 uint8_t sensorFSM(uint8_t state){
 	uint8_t tempHumidCheckVal = 0;
 	int tmpX, tmpY, tmpZ;
-	double tmpTemp, tmpHumid;
+	int16_t tmpTemp;
+	uint16_t tmpHumid;
 	
 	switch (state){
 		case SENSOR_STATE_IDLE:			// Idle state
@@ -94,6 +95,14 @@ uint8_t sensorFSM(uint8_t state){
 		case SENSOR_STATE_BEGIN:		// Begin state
 			if (DEBUG_MODE) RDLCDClear();
 			return SENSOR_STATE_ACCEL;
+			
+		case SENSOR_STATE_PRESSURE:		// Get pressure and altitude data
+			if (DEBUG_MODE) SBPressureToLCD();
+			return SENSOR_STATE_GPS;
+			
+		case SENSOR_STATE_GPS:			// Get GPS data
+			GPSGetLocation((double*) SBData.location, (uint8_t*) &SBData.timeH, (uint16_t*) &SBData.timeL);
+			return SENSOR_STATE_ACCEL;
 		
 		case SENSOR_STATE_ACCEL:		// Get accelerometer data
 			if (DEBUG_MODE) SBAccelToLCD();
@@ -101,13 +110,6 @@ uint8_t sensorFSM(uint8_t state){
 			SBData.accelX = tmpX;
 			SBData.accelY = tmpY;
 			SBData.accelZ = tmpZ;
-			return SENSOR_STATE_GPS;
-			
-		case SENSOR_STATE_GPS:			// Get GPS data
-			GPSGetLocation((double*) SBData.location, (uint8_t*) &SBData.timeH, (uint16_t*) &SBData.timeL);
-			return SENSOR_STATE_PRESSURE;
-			
-		case SENSOR_STATE_PRESSURE:		// Get pressure and altitude data
 			return SENSOR_STATE_GEIGER;
 			
 		case SENSOR_STATE_GEIGER:		// Get Geiger Counter data
@@ -125,12 +127,13 @@ uint8_t sensorFSM(uint8_t state){
 				SBTempHumidGetVals(&tmpTemp, &tmpHumid);
 				SBData.temperature = tmpTemp;
 				SBData.humidity = tmpHumid;
+				YLEDPORT |= (1<<YLEDBIT);
 				if (DEBUG_MODE)	SBTempHumidDispLCD();
 				return SENSOR_STATE_MEMORY;		// Data transfer complete - read next sensor
 			} else return SENSOR_STATE_TEMPHUMID2;	// Keep checking TempHumid
 			
 		case SENSOR_STATE_MEMORY:		// Write data to SD card and location pointer to EEPROM
-			storeData();
+			//storeData();
 			return SENSOR_STATE_IDLE;
 	}
 	return 0;
@@ -144,13 +147,13 @@ static uint8_t SDBuffer[512];
 static uint16_t bufLen = 0;
 // Data packet should be 58 bytes, inclusive -> DOUBLE CHECK!!
 void storeData(void){
-	memcpy(&SDBuffer[bufLen], (uint32_t*)&SBData.numSamples, sizeof(SBData.numSamples));
+	memcpy(&SDBuffer[bufLen], (int16_t*)&SBData.numSamples, sizeof(SBData.numSamples));
 	bufLen += sizeof(SBData.numSamples);
-	memcpy(&SDBuffer[bufLen], (uint32_t*)&SBData.crashCount, sizeof(SBData.crashCount));
+	memcpy(&SDBuffer[bufLen], (int16_t*)&SBData.crashCount, sizeof(SBData.crashCount));
 	bufLen += sizeof(SBData.crashCount);
-	memcpy(&SDBuffer[bufLen], (double*)&SBData.temperature, sizeof(SBData.temperature));
+	memcpy(&SDBuffer[bufLen], (int16_t*)&SBData.temperature, sizeof(SBData.temperature));
 	bufLen += sizeof(SBData.temperature);
-	memcpy(&SDBuffer[bufLen], (double*)&SBData.humidity, sizeof(SBData.humidity));
+	memcpy(&SDBuffer[bufLen], (uint16_t*)&SBData.humidity, sizeof(SBData.humidity));
 	bufLen += sizeof(SBData.humidity);
 	memcpy(&SDBuffer[bufLen], (int*)&SBData.accelX, sizeof(SBData.accelX));
 	bufLen += sizeof(SBData.accelX);
@@ -195,14 +198,8 @@ void init(char* BTName){
 	YLEDDDR |= (1 << YLEDBIT);//led output
 	RLEDPORT |= (1 << RLEDBIT);// turn on red LED
 	
-	// Initialise ADC
-	DDRF &= ~(1<<PF0); // Enable battery monitor ADC pin as input
-	RDAnalogInit(0);	// init adcDDRB |= (1<<PB0);
-	
 	if (DEBUG_MODE){
 		// Initialise LCD
-		DDRB |= (1<<PB0);//Permanently enable LCD as selected chip
-		PORTB |= (1<<PB0);//Permanently enable LCD as selected chip
 		RDLCDInit();
 		RDLCDPosition(0, 0);
 		RDLCDClear();
@@ -214,6 +211,10 @@ void init(char* BTName){
 		}
 	}
 	
+	// Initialise ADC
+	DDRF &= ~(1<<PF0); // Enable battery monitor ADC pin as input
+	RDAnalogInit(0);	// init adcDDRB |= (1<<PB0);
+	
 	// Set up accelerometer pins
 	SBAccelPinsInit();
 	
@@ -221,8 +222,8 @@ void init(char* BTName){
 	SBCtrlInit();
 	
 	// Initialise I2C
-	//RDI2CInit(0);
-	//#define RDI2C_DYNAMIC 1
+	RDI2CInit(0);
+	#define RDI2C_DYNAMIC 1
 	
 	// Initialise Pressure sensor
 	_delay_ms(100);
@@ -238,7 +239,7 @@ void init(char* BTName){
 	RDSDInit();
 	
 	// Initialise GPS
-	GPSInit();
+	//GPSInit();
 	
 	// Manual WDT force reset pins
 	if (DEBUG_MODE){

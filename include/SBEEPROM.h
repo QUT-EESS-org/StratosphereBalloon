@@ -33,21 +33,21 @@ uint8_t SBEEPROMReadWDTCrashFlag(void){
 	return eeprom_read_byte((uint8_t*) WDT_CRASH_FLAG_LOC);
 }
 
+int16_t SBEEPROMReadCrashCount(void){
+	return eeprom_read_word((uint16_t*) CRASH_COUNTER_LOC);
+}
+
 void SBEEPROMUpdateCrashCounter(void){
-	uint32_t prevVal = eeprom_read_dword((uint32_t*) CRASH_COUNTER_LOC);
-	eeprom_write_dword((uint32_t*) CRASH_COUNTER_LOC, ++prevVal);
+	int16_t prevVal = SBEEPROMReadCrashCount();
+	eeprom_write_word((uint16_t*) CRASH_COUNTER_LOC, ++prevVal);
 }
 
-uint32_t SBEEPROMReadCrashCount(void){
-	return eeprom_read_dword((uint32_t*) CRASH_COUNTER_LOC);
+void SBEEPROMWriteNumSamples(int16_t val){
+	eeprom_write_word((uint16_t*) NUM_SAMPLES_LOC, val);
 }
 
-void SBEEPROMWriteNumSamples(uint32_t val){
-	eeprom_write_dword((uint32_t*) NUM_SAMPLES_LOC, val);
-}
-
-uint32_t SBEEPROMReadNumSamples(void){
-	eeprom_read_dword((uint32_t*) NUM_SAMPLES_LOC);
+int16_t SBEEPROMReadNumSamples(void){
+	eeprom_read_word((uint16_t*) NUM_SAMPLES_LOC);
 }
 
 #endif

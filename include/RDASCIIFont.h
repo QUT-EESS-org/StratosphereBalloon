@@ -13,11 +13,13 @@
  */
 #define RDASCIIFONT_H_
 
+#include <avr/pgmspace.h>
+
 /*
  * ASCII array which stores pixel-data regarding how characters should be drawn
  * to the LCD screen.
  */
-static const unsigned char ASCII[][5] =
+static const unsigned char PROGMEM ASCII[][5] =
 {
  {0x00, 0x00, 0x00, 0x00, 0x00} // 20  
 ,{0x00, 0x00, 0x5f, 0x00, 0x00} // 21 !

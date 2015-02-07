@@ -34,8 +34,8 @@ volatile uint8_t sensorReadFlag = 0, flagCount = 0;
 
 // Sensor data struct
 typedef struct{
-	double temperature;		// See SBTempHumid
-	double humidity;		// See SBTempHumid
+	int16_t temperature;		// See SBTempHumid
+	uint16_t humidity;		// See SBTempHumid
 	int accelX;				// See SBAccel
 	int accelY;				// See SBAccel
 	int accelZ;				// See SBAccel
@@ -44,8 +44,8 @@ typedef struct{
 	double location[3];		// See SBGPS
 	uint8_t timeH;			// See SBGPS
 	uint16_t timeL;			// See SBGPS
-	uint32_t crashCount;	// See SBEEPROM
-	uint32_t numSamples;	// See SBEEPROM
+	int16_t crashCount;	// See SBEEPROM
+	int16_t numSamples;	// See SBEEPROM
 	uint32_t SDLoc;			// See SBEEPROM
 } SBDataStruct;
 

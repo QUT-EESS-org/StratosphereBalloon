@@ -16,14 +16,14 @@ void SBPressureToLCD(void){
 	itoa(pres, presStr, 10);
 	itoa(temp, tempStr, 10);
 	
-	RDLCDPosition(0, 2);					
+	RDLCDPosition(0, 3);					
 	RDLCDString((unsigned char*) "Temp:     ");
-	RDLCDPosition(42, 2);
+	RDLCDPosition(42, 3);
 	RDLCDString(tempStr);
 	RDLCDString((unsigned char*) "C");
-	RDLCDPosition(0, 3);					
+	RDLCDPosition(0, 4);					
 	RDLCDString((unsigned char*) "Pres:     ");
-	RDLCDPosition(42, 3);
+	RDLCDPosition(42, 4);
 	RDLCDString(presStr);
 	RDLCDString((unsigned char*) "%");
 }

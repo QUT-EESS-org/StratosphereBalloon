@@ -38,8 +38,8 @@
 volatile static uint8_t oneWireCommState = SBTH_STATE_IDLE;
 volatile static uint8_t oneWireDataBitNum = 0, pinState;
 volatile static uint64_t dataBuffer;
-static double _temperature;
-static double _humidity;
+static int16_t _temperature;
+static uint16_t _humidity;
  
 void SBTempHumidInit(void){
 	SBTH_SDA_DDR &= ~(1<<SBTH_SDA_BIT);	// PE7-INT6 is used as the hardware interrupt pin
@@ -94,7 +94,7 @@ int8_t SBTempHumidCaseCheck(void){
 			return 0; // Do nothing
 		
 		case SBTH_STATE_FINALISE:{
-			uint8_t parityRx, parity, temperature1, temperature2, humidity1, humidity2;
+			char parityRx, parity, temperature1, temperature2, humidity1, humidity2;
 			parityRx 		= dataBuffer&0x00000000FF;
 			temperature1 	= (dataBuffer&0x000000FF00)>>8;
 			temperature2 	= (dataBuffer&0x0000FF0000)>>16;
@@ -104,8 +104,8 @@ int8_t SBTempHumidCaseCheck(void){
 			parity = temperature1 + temperature2 + humidity1 + humidity2; 
 			oneWireCommState = SBTH_STATE_IDLE;
 			if (parity == parityRx){
-				_temperature = (double)((int)((temperature2<<8)|(temperature1)))/10;//dat math
-				_humidity = (double)((int)((humidity2<<8)|(humidity1)))/10;//dat math
+				_humidity = (uint16_t)(((uint8_t)humidity2<<8)|((uint8_t)humidity1));//dat math
+				_temperature = (int16_t)(((int16_t)(temperature2<<8))|((uint8_t)temperature1));//dat math
 				return 1;
 			} else return 1;
 		}
@@ -113,27 +113,27 @@ int8_t SBTempHumidCaseCheck(void){
 	return 0;
 }
 
-void SBTempHumidGetVals(double* temp, double* humid){
+void SBTempHumidGetVals(int16_t* temp, uint16_t* humid){
 	*temp = _temperature;
 	*humid = _humidity;
 }
 
 void SBTempHumidDispLCD(void){
-	unsigned char tempStr[5], humidStr[5];
+	unsigned char tempStr[20], humidStr[5];
 	
-	sprintf(tempStr, "%0.1f", _temperature);
-	sprintf(humidStr, "%0.1f", _humidity);
+	itoa(_temperature, tempStr, 10);
+	itoa(_humidity, humidStr, 10);
 	
 	RDLCDPosition(0, 0);					
 	RDLCDString((unsigned char*) "Temp:     ");
 	RDLCDPosition(42, 0);
 	RDLCDString(tempStr);
-	RDLCDString((unsigned char*) "C");
+	RDLCDString((unsigned char*) "dC");
 	RDLCDPosition(0, 1);					
 	RDLCDString((unsigned char*) "Humid:     ");
 	RDLCDPosition(42, 1);
 	RDLCDString(humidStr);
-	RDLCDString((unsigned char*) "%");
+	RDLCDString((unsigned char*) "d%");
 }
 
 void SBTempHumidEnInt(void){
