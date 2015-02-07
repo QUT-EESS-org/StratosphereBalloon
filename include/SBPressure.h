@@ -4,10 +4,6 @@ void SBPressureInit(void){
 	BMP085_Calibration();
 }
 
-void SBPressureGetData(long *pressure, long *temperature){
-	bmp085Convert(temperature, pressure);
-}
-
 void SBCalculateAltitude(long* altitude, long pressure){
 	double temporary;
 
@@ -16,10 +12,14 @@ void SBCalculateAltitude(long* altitude, long pressure){
 	*altitude = round(44330 * temporary);
 }
 
+void SBPressureGetData(long *pressure, long *temperature, long *altitude){
+	bmp085Convert(temperature, pressure);
+	SBCalculateAltitude(altitude, *pressure);
+}
+
 void SBPressureToLCD(void){
 	long pres, temp, alt;
-	SBPressureGetData(&pres, &temp);
-	SBCalculateAltitude(&alt, pres);
+	SBPressureGetData(&pres, &temp, &alt);
 	
 	unsigned char tempStr[11], presStr[11], altStr[11];
 	itoa(pres, presStr, 10);
