@@ -1,4 +1,5 @@
 #include "pres/bmp085.h"
+#include <math.h>
 
 void SBPressureInit(void){
 	BMP085_Calibration();
