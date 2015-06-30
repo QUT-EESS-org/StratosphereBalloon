@@ -40,8 +40,7 @@ uint8_t sensorFSM(uint8_t state);
 void storeData(void);
 
 // Main program
-int main (void) 
-{
+int main (void) {
 	SBWDTEn(); // Tic
 	
 	/* Initialise */
@@ -65,7 +64,7 @@ int main (void)
 	
 	SBWDTDis(); // Toc
 	
-		char tmp[10];
+	char tmp[10];
 	while (1) {
 		SBWDTEn();	// Tic
 		
@@ -82,7 +81,8 @@ int main (void)
 		if (sensorReadFlag){
 			sensorReadState = SENSOR_STATE_BEGIN;
 			sensorReadFlag = 0;	
-		}else sensorReadState = sensorFSM(sensorReadState);
+		}
+		else sensorReadState = sensorFSM(sensorReadState);
 		
 		SBWDTDis();	// Toc
     }
@@ -99,11 +99,15 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_IDLE;
 			
 		case SENSOR_STATE_BEGIN:		// Begin state
-			if (DEBUG_MODE) RDLCDClear();
+			if (DEBUG_MODE){
+				RDLCDClear();
+			}
 			return SENSOR_STATE_ACCEL;
 			
 		case SENSOR_STATE_PRESSURE:		// Get pressure and altitude data
-			if (DEBUG_MODE) SBPressureToLCD();
+			if (DEBUG_MODE) {
+				SBPressureToLCD();
+			}
 			return SENSOR_STATE_GPS;
 			
 		case SENSOR_STATE_GPS:			// Get GPS data
@@ -111,7 +115,9 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_ACCEL;
 		
 		case SENSOR_STATE_ACCEL:		// Get accelerometer data
-			if (DEBUG_MODE) SBAccelToLCD();
+			if (DEBUG_MODE) {
+				SBAccelToLCD();
+			}
 			SBAccelGetAccelerationInt(&tmpX, &tmpY, &tmpZ);
 			SBData.accelX = tmpX;
 			SBData.accelY = tmpY;
@@ -119,7 +125,9 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_GEIGER;
 			
 		case SENSOR_STATE_GEIGER:		// Get Geiger Counter data
-			if (DEBUG_MODE) SBGeigerToLCD();
+			if (DEBUG_MODE) {
+				SBGeigerToLCD();
+			}
 			SBData.cpm = SBGeigerRead();
 			return SENSOR_STATE_TEMPHUMID1;
 			
@@ -133,9 +141,14 @@ uint8_t sensorFSM(uint8_t state){
 				SBTempHumidGetVals(&tmpTemp, &tmpHumid);
 				SBData.temperature = tmpTemp;
 				SBData.humidity = tmpHumid;
-				if (DEBUG_MODE)	SBTempHumidDispLCD();
+				if (DEBUG_MODE)	{
+					SBTempHumidDispLCD();
+				}
 				return SENSOR_STATE_MEMORY;		// Data transfer complete - read next sensor
-			} else return SENSOR_STATE_TEMPHUMID2;	// Keep checking TempHumid
+			} 
+			else {
+				return SENSOR_STATE_TEMPHUMID2;	// Keep checking TempHumid
+			}
 			
 		case SENSOR_STATE_MEMORY:		// Write data to SD card and location pointer to EEPROM
 			storeData();
@@ -193,7 +206,9 @@ void storeData(void){
 		
 		RDLCDClear();
 		RDLCDPosition(0, 0);
-		for (int i = 0; i < 40; i++) RDLCDCharacter((unsigned char) SDBuffer[i]);
+		for (int i = 0; i < 40; i++) {
+			RDLCDCharacter((unsigned char) SDBuffer[i]);
+		}
 		while(1);
 	}
 }
