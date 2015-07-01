@@ -11,7 +11,6 @@
 
 void GPSInit(void);
 uint8_t GPSGetLocation(double location[], uint8_t *timeH, uint16_t *timeL);
-
 static char GPSCheckFix(void);
 static void GPSGetSentence(char sentence[]);
 static void GPSParseSentence (char sentence[], double location[], uint8_t *timeH, uint16_t *timeL);
@@ -27,7 +26,7 @@ void GPSInit(void) {
     unsigned char command[] = "$PMTK220,1000*1F\r\n";
         
     // 1Hz update
-    for (i = 0; command[i] != '\0'; ++i) {
+    for (i = 0; i<20; ++i) {
 		RDUARTSendChar(command[i]);
 	}
 	
@@ -35,7 +34,7 @@ void GPSInit(void) {
 	unsigned char command2[] = "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n";
 	
 	// Only enable GGA output
-    for (i = 0; command2[i] != '\0'; ++i) {
+    for (i = 0; i<53; ++i) {
 		RDUARTSendChar(command2[i]);
 	}
 }
