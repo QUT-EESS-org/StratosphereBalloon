@@ -46,8 +46,7 @@ void SBWDTDis(void){
 
 ISR(WDT_vect){
 	if(DEBUG_MODE){
-		for (uint8_t i=0;i<4;i++)
-		{
+		for (uint8_t i=0;i<4;i++) {
 			//LED ON
 			RLEDPORT|=(1<<RLEDBIT);
 			//~0.1s delay
@@ -56,7 +55,8 @@ ISR(WDT_vect){
 			RLEDPORT&=~(1<<RLEDBIT);
 			_delay_ms(80);
 		}
-	} else{
+	}
+	else{
 		SBEEPROMUpdateCrashCounter();
 		SBEEPROMWriteWDTCrashFlag(1);
 		SBEEPROMWriteNumSamples(SBData.numSamples);
