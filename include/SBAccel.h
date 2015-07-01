@@ -81,7 +81,9 @@ void SBAccelCal(void){
 	xIntCal = -(x)+78;
 	yIntCal = -(y);
 	zIntCal = -(z);
-	if(DEBUG_MODE) RDLCDClear();
+	if(DEBUG_MODE) {
+		RDLCDClear();
+	}
 }
 
 void SBAccelToLCD(void){
