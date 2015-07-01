@@ -92,7 +92,7 @@ uint8_t sensorFSM(uint8_t state){
 	uint8_t tempHumidCheckVal = 0;
 	int tmpX, tmpY, tmpZ;
 	int16_t tmpTemp;
-	uint16_t tmpHumid;
+	uint16_t tmpHumid; 
 	
 	switch (state){
 		case SENSOR_STATE_IDLE:			// Idle state
