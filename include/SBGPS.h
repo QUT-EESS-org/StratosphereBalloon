@@ -11,7 +11,6 @@
 
 void GPSInit(void);
 uint8_t GPSGetLocation(double location[], uint8_t *timeH, uint16_t *timeL);
-
 static char GPSCheckFix(void);
 static void GPSGetSentence(char sentence[]);
 static void GPSParseSentence (char sentence[], double location[], uint8_t *timeH, uint16_t *timeL);
@@ -27,15 +26,17 @@ void GPSInit(void) {
     unsigned char command[] = "$PMTK220,1000*1F\r\n";
         
     // 1Hz update
-    for (i = 0; command[i] != '\0'; ++i)
+    for (i = 0; i<20; ++i) {
 		RDUARTSendChar(command[i]);
+	}
 	
 	// NMEA Command - Set outputs
 	unsigned char command2[] = "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n";
 	
 	// Only enable GGA output
-    for (i = 0; command2[i] != '\0'; ++i)
+    for (i = 0; i<53; ++i) {
 		RDUARTSendChar(command2[i]);
+	}
 }
 
 uint8_t GPSGetLocation(double location[], uint8_t *timeH, uint16_t *timeL) {
@@ -47,7 +48,9 @@ uint8_t GPSGetLocation(double location[], uint8_t *timeH, uint16_t *timeL) {
 	uint8_t i = 255;
 	
 	do {
-		if (!i--) return -1;
+		if (!i--) {
+			return -1;
+		}
 	}
 	while (!GPSCheckFix());
 	
@@ -70,7 +73,6 @@ static uint8_t GPSFindCSV(uint8_t value, char sentence[]) {
 	uint8_t i;
     
 	for (i = 0; commas < value; i++) {
-	
 		commas += sentence[i] == ',';
 	}
 	
@@ -95,13 +97,15 @@ static void GPSGetSentence(char sentence[]) {
             for (i = 1; i < NMEA_STR_SIZE; ++i) {
                 
                 sentence[i] = RDUARTGetChar();
-                if (sentence[i] == '\n') 
+                if (sentence[i] == '\n') {
 					break;		// Break at end of sentence
+				}
             }
 			
 			// Confirm fix data is valid and GPS still has fix
-			if ((sentence[GPSFindCSV(6,sentence)] != '0') && GPSCheckFix())
+			if ((sentence[GPSFindCSV(6,sentence)] != '0') && GPSCheckFix()) {
 				startFound = 1;
+			}
         }
     }
 }
@@ -129,12 +133,14 @@ static void GPSParseSentence (char sentence[], double location[], uint8_t *timeH
 	
 	location[0] = (double)(sentence[offset] - 0x30) * 10 + (double)(sentence[offset+1] - 0x30);
 	temp		= (double)(sentence[offset+2] - 0x30) * 10 + (double)(sentence[offset+3] - 0x30) +
-	(double)(sentence[offset+5] - 0x30) * 0.1 + (double)(sentence[offset+6] - 0x30) * 0.01 +
-	(double)(sentence[offset+7] - 0x30) * 0.001 + (double)(sentence[offset+8] - 0x30) * 0.0001;
+				  (double)(sentence[offset+5] - 0x30) * 0.1 + (double)(sentence[offset+6] - 0x30) * 0.01 +
+				  (double)(sentence[offset+7] - 0x30) * 0.001 + (double)(sentence[offset+8] - 0x30) * 0.0001;
 	temp /= 60;
 	location[0] += temp; 
 	
-	if (sentence[offset+10] == 'S') location[0] *= -1;
+	if (sentence[offset+10] == 'S') {
+		location[0] *= -1;
+	}
 	
 	// Longitude
 	offset = GPSFindCSV(4,sentence);
@@ -147,7 +153,9 @@ static void GPSParseSentence (char sentence[], double location[], uint8_t *timeH
 	temp /= 60;
 	location[1] += temp;
 	
-	if (sentence[offset+11] == 'W') location[1] = 360 - location[1];
+	if (sentence[offset+11] == 'W') {
+		location[1] = 360 - location[1];
+	}
 	
 	// Altitude
 	// offset to M after mean altitude - 2 places
