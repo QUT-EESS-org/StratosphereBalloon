@@ -33,7 +33,7 @@
 #define SENSOR_STATE_PRESSURE	4
 #define SENSOR_STATE_MEMORY		5
 #define SENSOR_STATE_GEIGER		8
-
+//function 
 // Function declarations
 void init(char* BTName);
 uint8_t sensorFSM(uint8_t state);
