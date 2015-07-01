@@ -39,7 +39,7 @@ void GPSInit(void) {
 	}
 }
 
-uint8_t GPSGetLocation(double location[], uint8_t *timeH, uint16_t *timeL) {
+uint8_t GPSGetLocation(double location[3], uint8_t *timeH, uint16_t *timeL) {
 	
 	// NMEA sentence buffer (80 characters)
     char sentence[NMEA_STR_SIZE] = {0};
