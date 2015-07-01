@@ -111,7 +111,7 @@ uint8_t sensorFSM(uint8_t state){
 			return SENSOR_STATE_GPS;
 			
 		case SENSOR_STATE_GPS:			// Get GPS data
-			GPSGetLocation((double*) SBData.location, (uint8_t*) &SBData.timeH, (uint16_t*) &SBData.timeL);
+			GPSGetLocation(SBData.location, &SBData.timeH, &SBData.timeL);
 			return SENSOR_STATE_ACCEL;
 		
 		case SENSOR_STATE_ACCEL:		// Get accelerometer data
